@@ -9,6 +9,7 @@
 #include "/home/luigi/SCPA_Progetto/libs/data_structure.h"
 #include "/home/luigi/SCPA_Progetto/libs/matrixLists.h"
 #include "/home/luigi/SCPA_Progetto/libs/csr_utils.h"
+#include "/home/luigi/SCPA_Progetto/libs/csr_Operations.h"
 
 const char *base_path = "/home/luigi/SCPA_Progetto/matrix/";
 // Prodotto matrice-vettore CSR seriale
@@ -164,15 +165,15 @@ int main() {
             perror("Errore allocazione vettore y");
             return EXIT_FAILURE;
         }
-
+        double start = omp_get_wtime();
         // Esegui prodotto CSR 50 volte
         for (int j = 0; j < 50; j++) {
-            csr_matrix_vector_product(matrix_data->M, IRP, JA, AS, x, y);
+            struct matrixPerformance perf = serial_csr(matrix_data, x, 1);
+
         }
 
-        printf("✅ Preprocessamento e prodotto CSR completati.\n");
-        printf("   Dimensione: %d x %d, NZ: %d\n", matrix_data->M, matrix_data->N, matrix_data->nz);
-
+       
+ 
         // Libera memoria
         free(matrix_data->row_indices);
         free(matrix_data->col_indices);

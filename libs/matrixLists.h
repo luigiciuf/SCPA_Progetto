@@ -3,9 +3,9 @@
 
 static const char *matrix_names[] = {
     "cage4.mtx",
-    "mhda416.mtx",
-    "mcfe.mtx",
-    "olm1000.mtx",
+   // "mhda416.mtx",
+    //"mcfe.mtx",
+   // "olm1000.mtx",
     "adder_dcop_32.mtx",
     "west2021.mtx",
     "cavity10.mtx",

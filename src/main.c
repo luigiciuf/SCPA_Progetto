@@ -144,18 +144,20 @@ void preprocess_matrix(struct matrixData *matrix_data, int i) {
 
 int main() {
 
-    int numMaxThread= omp_get_max_threads();
-    int numThread[]= {2, 4, 8,16,32, numMaxThread};
+    int max_threads = omp_get_max_threads();
+    int num_configs = max_threads; // da 1 a max_threads
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
-    // Apertura del file CSV per scrivere i risultati
-    FILE *csv_file = fopen("results.csv", "w");
-    if (!csv_file) {
-        perror("Errore nell'apertura del file CSV");
-        return EXIT_FAILURE;
-    }
+     // Apri due file separati
+     FILE *csr_serial = fopen("results/csr_serial.csv", "w");
+     FILE *csr_parallel = fopen("results/csr_parallel.csv", "w");
+     if (!csr_serial || !csr_parallel) {
+         perror("Errore apertura file CSV");
+         return EXIT_FAILURE;
+     }
 
-    // intestazione CSV
-    fprintf(csv_file, "Matrice,M,N,Thread,Tempo Medio (s),GFLOPS Seriale,GFLOPS Parallelo,Speedup\n");
+    // Intestazioni
+    fprintf(csr_serial, "Matrice,M,N,Thread,Tempo Medio (s),GFLOPS Seriale\n");
+    fprintf(csr_parallel, "Matrice,M,N,Thread,Tempo Medio (s),GFLOPS Parallelo,Speedup\n");
 
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
@@ -189,21 +191,27 @@ int main() {
         // Esegui prodotto CSR 50 volte
         int ITERATION = 50;
         struct matrixPerformance perf_serial_csr = benchmark(matrix_data, x, ITERATION, 1, serial_csr);
+        fprintf(csr_serial, "%s,%d,%d,%d,%.6f,%.6f\n",
+            matrix_names[i],
+            matrix_data->M,
+            matrix_data->N,
+            1,
+            perf_serial_csr.seconds,
+            perf_serial_csr.gigaFlops);
   
         
-        for (int t = 0; t < sizeof(numThread)/sizeof(numThread[0]); t++) {
-            int threads = numThread[t];
+        for (int threads = 2; threads <= max_threads; threads++) {
             struct matrixPerformance perf_parallel_csr = benchmark(matrix_data, x, ITERATION, threads, parallel_csr);
              // Calcola speedup (solo se flops seriali > 0)
             double speedup = (perf_serial_csr.gigaFlops > 0) ?
             (perf_parallel_csr.gigaFlops / perf_serial_csr.gigaFlops) : 0.0;
-            fprintf(csv_file, "%s,%d,%d,%d,%.6f,%.6f,%.6f,%.2f\n",
+            fprintf(csr_parallel, "%s,%d,%d,%d,%.6f,%.6f,%.6f\n",
                 matrix_names[i],
                 matrix_data->M,
                 matrix_data->N,
                 threads,
                 perf_parallel_csr.seconds,
-                perf_serial_csr.gigaFlops,
+                //perf_serial_csr.gigaFlops,
                 perf_parallel_csr.gigaFlops,
                 speedup);
             }
@@ -219,7 +227,8 @@ int main() {
         free(y);
     
     }
-    fclose(csv_file);
+    fclose(csr_serial);
+    fclose(csr_parallel);
 
     return 0;
 }

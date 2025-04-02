@@ -33,8 +33,9 @@ struct matrixPerformance serial_csr(struct matrixData *matrix_data, double *x, i
 
     struct matrixPerformance node;
     node.seconds = end - start;
-    node.flops = 0;
-    node.gigaFlops = 0;
+    node.flops = 2.0 * matrix_data->nz;
+    node.gigaFlops = (node.flops / node.seconds) / 1e9;
+
 
     free(y);
     free(IRP);

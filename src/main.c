@@ -131,6 +131,15 @@ void preprocess_matrix(struct matrixData *matrix_data, int i) {
 
 int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
+    // Apertura del file CSV per scrivere i risultati
+    FILE *csv_file = fopen("risultati_gflops.csv", "w");
+    if (!csv_file) {
+        perror("Errore nell'apertura del file CSV");
+        return EXIT_FAILURE;
+    }
+
+    // Scrittura dell'intestazione nel file CSV
+    fprintf(csv_file, "Nome Matrice,GFLOPS\n");
 
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
@@ -165,12 +174,17 @@ int main() {
             perror("Errore allocazione vettore y");
             return EXIT_FAILURE;
         }
-        double start = omp_get_wtime();
+        double total_gflops = 0.0;
         // Esegui prodotto CSR 50 volte
         for (int j = 0; j < 50; j++) {
             struct matrixPerformance perf = serial_csr(matrix_data, x, 1);
+            total_gflops += perf.gigaFlops;
 
         }
+        double avg_gflops = total_gflops / 50.0;
+
+        // Scrivi riga CSV
+        fprintf(csv_file, "%s,%.6f\n", matrix_names[i], avg_gflops);
 
        
  
@@ -185,6 +199,7 @@ int main() {
         free(JA);
         free(AS);
     }
+    fclose(csv_file);
 
     return 0;
 }

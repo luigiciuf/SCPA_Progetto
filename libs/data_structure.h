@@ -44,4 +44,18 @@ typedef struct {
     double relativeError;
 } MatrixPerformanceResult;
 
+
+typedef struct matrixPerformance (*MatVecKernel)(
+    struct matrixData *matrix_data,
+    double *x,
+    int num_threads
+);
+
+struct matrixPerformance benchmark(
+    struct matrixData *matrix_data,
+    double *x,
+    int num_iter,
+    int num_threads,
+    MatVecKernel kernel_func
+);
 #endif // DATA_STRUCTURE_H

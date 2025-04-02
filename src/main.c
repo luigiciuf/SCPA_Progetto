@@ -12,15 +12,28 @@
 #include "/home/luigi/SCPA_Progetto/libs/csr_Operations.h"
 
 const char *base_path = "/home/luigi/SCPA_Progetto/matrix/";
-// Prodotto matrice-vettore CSR seriale
-void csr_matrix_vector_product(int M, const int *IRP, const int *JA, const double *AS, const double *x, double *y) {
-    for (int i = 0; i < M; i++) {
-        double sum = 0.0;
-        for (int j = IRP[i]; j < IRP[i + 1]; j++) {
-            sum += AS[j] * x[JA[j]];
-        }
-        y[i] = sum;
+
+struct matrixPerformance benchmark(
+    struct matrixData *matrix_data,
+    double *x,
+    int num_iter,
+    int num_threads,
+    MatVecKernel kernel_func
+) {
+    struct matrixPerformance result = {0};
+
+    for (int i = 0; i < num_iter; i++) {
+        struct matrixPerformance temp = kernel_func(matrix_data, x, num_threads);
+        result.seconds += temp.seconds;
+        result.flops += temp.flops;
+        result.gigaFlops += temp.gigaFlops;
     }
+
+    result.seconds /= num_iter;
+    result.flops /= num_iter;
+    result.gigaFlops /= num_iter;
+
+    return result;
 }
 
 /* Funzione per il preprocessamento delle matrici in input da file */
@@ -132,14 +145,14 @@ void preprocess_matrix(struct matrixData *matrix_data, int i) {
 int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
     // Apertura del file CSV per scrivere i risultati
-    FILE *csv_file = fopen("risultati_gflops.csv", "w");
+    FILE *csv_file = fopen("results.csv", "w");
     if (!csv_file) {
         perror("Errore nell'apertura del file CSV");
         return EXIT_FAILURE;
     }
 
-    // Scrittura dell'intestazione nel file CSV
-    fprintf(csv_file, "Nome Matrice,GFLOPS\n");
+    // intestazione CSV
+    fprintf(csv_file, "Nome Matrice,M,N,Tempo Medio (s),GFLOPS CSR Seriale\n");
 
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
@@ -163,28 +176,23 @@ int main() {
             x[j] = 1.0;
         }
 
-        // Alloca CSR
-        int *IRP, *JA;
-        double *AS;
-        convert_to_csr(matrix_data->M, matrix_data->nz, matrix_data->row_indices, matrix_data->col_indices, matrix_data->values, &IRP, &JA, &AS);
-
         // Alloca vettore risultato
         double *y = malloc(matrix_data->M * sizeof(double));
         if (!y) {
             perror("Errore allocazione vettore y");
             return EXIT_FAILURE;
         }
-        double total_gflops = 0.0;
         // Esegui prodotto CSR 50 volte
-        for (int j = 0; j < 50; j++) {
-            struct matrixPerformance perf = serial_csr(matrix_data, x, 1);
-            total_gflops += perf.gigaFlops;
-
-        }
-        double avg_gflops = total_gflops / 50.0;
-
-        // Scrivi riga CSV
-        fprintf(csv_file, "%s,%.6f\n", matrix_names[i], avg_gflops);
+        int ITERATION = 50;
+        struct matrixPerformance perf = benchmark(matrix_data, x, ITERATION, 1, serial_csr);
+        fprintf(csv_file, "%s,%d,%d,%.6f,%.6f\n",
+            matrix_names[i],
+            matrix_data->M,
+            matrix_data->N,
+            perf.seconds,
+            perf.gigaFlops);
+        
+     
 
        
  
@@ -195,9 +203,7 @@ int main() {
         free(matrix_data);
         free(x);
         free(y);
-        free(IRP);
-        free(JA);
-        free(AS);
+    
     }
     fclose(csv_file);
 

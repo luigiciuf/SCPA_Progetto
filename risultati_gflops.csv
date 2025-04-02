@@ -1,23 +1,4 @@
-Nome Matrice,GFLOPS
-cage4.mtx,0.766574
-adder_dcop_32.mtx,0.737024
-west2021.mtx,1.802423
-cavity10.mtx,1.603841
-rdist2.mtx,1.756452
-cant.mtx,1.158503
-olafu.mtx,1.220236
-Cube_Coup_dt0.mtx,1.179239
-bcsstk17.mtx,1.378528
-mac_econ_fwd500.mtx,1.023121
-mhd4800a.mtx,1.676894
-cop20k_A.mtx,0.903823
-raefsky2.mtx,1.140145
-af23560.mtx,1.125885
-lung2.mtx,0.873512
-FEM_3D_thermal1.mtx,1.183277
-thermal1.mtx,0.808500
-thermomech_TK.mtx,0.749213
-nlpkkt80.mtx,1.017569
-webbase-1M.mtx,0.625399
-dc1.mtx,0.952179
-amazon0302.mtx,0.474544
+Nome Matrice,M,N,Tempo Medio (s),GFLOPS CSR Seriale
+cage4.mtx,9,9,0.000000,0.746011
+Cube_Coup_dt0.mtx,2164760,2164760,0.173443,1.512129
+amazon0302.mtx,262111,262111,0.002946,0.843855

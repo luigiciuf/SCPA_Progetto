@@ -6,7 +6,8 @@
     "csr_utils.h": "c",
     "stdio.h": "c",
     "csr_operations.h": "c",
-    "hll_ellpack_utils.h": "c"
+    "hll_ellpack_utils.h": "c",
+    "ctype.h": "c"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",

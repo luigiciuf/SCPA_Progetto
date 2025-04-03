@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "/home/luigi/SCPA_Progetto/libs/mmio.h"
+#include "../libs/mmio.h"
 
 int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz ) {
     char line[MM_MAX_LINE_LENGTH];

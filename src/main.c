@@ -5,11 +5,11 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "/home/luigi/SCPA_Progetto/libs/mmio.h"
-#include "/home/luigi/SCPA_Progetto/libs/data_structure.h"
-#include "/home/luigi/SCPA_Progetto/libs/matrixLists.h"
-#include "/home/luigi/SCPA_Progetto/libs/csr_utils.h"
-#include "/home/luigi/SCPA_Progetto/libs/csr_Operations.h"
+#include "../libs/mmio.h"
+#include "../libs/data_structure.h"
+#include "../libs/matrixLists.h"
+#include "../libs/csr_utils.h"
+#include "../libs/csr_Operations.h"
 #include "../libs/hll_ellpack_utils.h" 
 
 const char *base_path = "/home/luigi/SCPA_Progetto/matrix/";

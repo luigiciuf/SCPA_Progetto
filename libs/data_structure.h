@@ -3,7 +3,7 @@
 #ifndef DATA_STRUCTURE_H
 #define DATA_STRUCTURE_H
 
-#include "mmio.h"
+#include "../libs/mmio.h"
 #include <stdint.h>
 
 // Struttura per i dati della matrice

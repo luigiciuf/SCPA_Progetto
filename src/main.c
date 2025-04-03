@@ -12,7 +12,7 @@
 #include "../libs/csr_Operations.h"
 #include "../libs/hll_ellpack_utils.h" 
 
-const char *base_path = "/home/luigi/SCPA_Progetto/matrix/";
+const char *base_path = "matrix/";  
 
 struct matrixPerformance benchmark(
     struct matrixData *matrix_data,

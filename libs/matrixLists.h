@@ -5,7 +5,7 @@ static const char *matrix_names[] = {
     "cage4.mtx",
     "Cube_Coup_dt0.mtx",
     "amazon0302.mtx",
-    /* "mhda416.mtx",
+     "mhda416.mtx",
     "mcfe.mtx",
     "olm1000.mtx",
     "adder_dcop_32.mtx",
@@ -34,7 +34,7 @@ static const char *matrix_names[] = {
     "amazon0302.mtx",
     "af_1_k101.mtx",   
     "roadNet-PA.mtx"
-    */
+    
 };
 
 #endif

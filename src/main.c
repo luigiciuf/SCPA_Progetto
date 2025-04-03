@@ -152,7 +152,8 @@ int main() {
      FILE *csr_serial = fopen("results/csr_serial.csv", "w");
      FILE *csr_parallel = fopen("results/csr_parallel.csv", "w");
      FILE *hll_serial = fopen("results/hll_serial.csv", "w");  
-     if (!csr_serial || !csr_parallel|| !hll_serial ) {
+     FILE *hll_parallel = fopen("results/hll_parallel.csv", "w");
+     if (!csr_serial || !csr_parallel|| !hll_serial|| !hll_parallel) {
          perror("Errore apertura file CSV");
          return EXIT_FAILURE;
      }
@@ -161,6 +162,8 @@ int main() {
     fprintf(csr_serial, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS\n");
     fprintf(csr_parallel, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS,Speedup\n");
     fprintf(hll_serial, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS\n");
+    fprintf(hll_parallel, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS,Speedup\n");
+
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
@@ -227,6 +230,7 @@ int main() {
             }
 
         struct matrixPerformance perf_serial_hll = benchmark(matrix_data, x, ITERATION, 1, serial_hll);
+        
    
         fprintf(hll_serial, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f\n",
                 matrix_names[i],
@@ -239,7 +243,24 @@ int main() {
                 flops,
                 perf_serial_hll.gigaFlops);
 
-
+            for (int threads = 2; threads <= max_threads; threads++) {
+                struct matrixPerformance perf_parallel_hll = benchmark(matrix_data, x, ITERATION, threads, parallel_hll);
+                double speedup = (perf_serial_hll.gigaFlops > 0) ?
+                                    (perf_parallel_hll.gigaFlops / perf_serial_hll.gigaFlops) : 0.0;
+            
+                fprintf(hll_parallel, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f,%.2f\n",
+                        matrix_names[i],
+                        matrix_data->M,
+                        matrix_data->N,
+                        nz,
+                        density,
+                        threads,
+                        perf_parallel_hll.seconds,
+                        flops,
+                        perf_parallel_hll.gigaFlops,
+                        speedup);
+            }
+                
        
  
         // Libera memoria
@@ -254,8 +275,7 @@ int main() {
     fclose(csr_serial);
     fclose(csr_parallel);
     fclose(hll_serial);  // chiudi anche questo
-
-
+    fclose(hll_parallel); 
     return 0;
 }
     

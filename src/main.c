@@ -10,6 +10,7 @@
 #include "/home/luigi/SCPA_Progetto/libs/matrixLists.h"
 #include "/home/luigi/SCPA_Progetto/libs/csr_utils.h"
 #include "/home/luigi/SCPA_Progetto/libs/csr_Operations.h"
+#include "../libs/hll_ellpack_utils.h" 
 
 const char *base_path = "/home/luigi/SCPA_Progetto/matrix/";
 
@@ -150,15 +151,16 @@ int main() {
      // Apri due file separati
      FILE *csr_serial = fopen("results/csr_serial.csv", "w");
      FILE *csr_parallel = fopen("results/csr_parallel.csv", "w");
-     if (!csr_serial || !csr_parallel) {
+     FILE *hll_serial = fopen("results/hll_serial.csv", "w");  
+     if (!csr_serial || !csr_parallel|| !hll_serial ) {
          perror("Errore apertura file CSV");
          return EXIT_FAILURE;
      }
 
     // Intestazioni
-    fprintf(csr_serial, "Matrice,M,N,Thread,Tempo Medio (s),GFLOPS Seriale\n");
-    fprintf(csr_parallel, "Matrice,M,N,Thread,Tempo Medio (s),GFLOPS Parallelo,Speedup\n");
-
+    fprintf(csr_serial, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS\n");
+    fprintf(csr_parallel, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS,Speedup\n");
+    fprintf(hll_serial, "Matrice,M,N,NZ,Densità,Thread,Tempo Medio (s),FLOPs,GFLOPS\n");
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
@@ -187,16 +189,22 @@ int main() {
             perror("Errore allocazione vettore y");
             return EXIT_FAILURE;
         }
+        int nz = matrix_data->nz;
+        double density = (double)nz / (matrix_data->M * matrix_data->N);
+        double flops = 2.0 * nz;
 
-        // Esegui prodotto CSR 50 volte
+        // Esegui prodotto  50 volte
         int ITERATION = 50;
         struct matrixPerformance perf_serial_csr = benchmark(matrix_data, x, ITERATION, 1, serial_csr);
-        fprintf(csr_serial, "%s,%d,%d,%d,%.6f,%.6f\n",
+        fprintf(csr_serial, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f\n",
             matrix_names[i],
             matrix_data->M,
             matrix_data->N,
-            1,
+            nz,
+            density,
+            1, // thread
             perf_serial_csr.seconds,
+            flops,
             perf_serial_csr.gigaFlops);
   
         
@@ -205,16 +213,32 @@ int main() {
              // Calcola speedup (solo se flops seriali > 0)
             double speedup = (perf_serial_csr.gigaFlops > 0) ?
             (perf_parallel_csr.gigaFlops / perf_serial_csr.gigaFlops) : 0.0;
-            fprintf(csr_parallel, "%s,%d,%d,%d,%.6f,%.6f,%.6f\n",
+            fprintf(csr_parallel, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f,%.2f\n",
                 matrix_names[i],
                 matrix_data->M,
                 matrix_data->N,
+                nz,
+                density,
                 threads,
                 perf_parallel_csr.seconds,
-                //perf_serial_csr.gigaFlops,
+                flops,
                 perf_parallel_csr.gigaFlops,
                 speedup);
             }
+
+        struct matrixPerformance perf_serial_hll = benchmark(matrix_data, x, ITERATION, 1, serial_hll);
+   
+        fprintf(hll_serial, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f\n",
+                matrix_names[i],
+                matrix_data->M,
+                matrix_data->N,
+                nz,
+                density,
+                1,  // thread
+                perf_serial_hll.seconds,
+                flops,
+                perf_serial_hll.gigaFlops);
+
 
        
  
@@ -229,6 +253,8 @@ int main() {
     }
     fclose(csr_serial);
     fclose(csr_parallel);
+    fclose(hll_serial);  // chiudi anche questo
+
 
     return 0;
 }

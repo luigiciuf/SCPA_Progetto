@@ -5,7 +5,8 @@ CC = gcc
 CFLAGS = -O2 -fopenmp -Ilibs
 
 # File sorgenti
-SRC = src/main.c src/csr_utils.c src/csr_Operations.c src/matrixIO.c
+SRC = src/main.c src/csr_utils.c src/csr_Operations.c src/matrixIO.c   src/hll_Operations.c \
+    src/hll_ellpack_utils.c
 
 # Output finale
 TARGET = main

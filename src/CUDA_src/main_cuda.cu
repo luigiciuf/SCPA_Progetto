@@ -4,6 +4,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include  "../CUDA_libs/csr_Operation.h"
+#include  "../CUDA_libs/hll_Operations.h"
+
 #include "../../libs/data_structure.h"
 #include "../../libs/matrixLists.h"
 #include "../../libs/mmio.h"
@@ -121,68 +123,94 @@ int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
     const int ITERATION = 50;
 
-    FILE *csv = fopen("results/cuda_serial.csv", "w");
-    if (!csv) {
+    FILE *cse_serial_csv = fopen("results/cuda_csr_serial.csv", "w");
+    if (!cse_serial_csv) {
         perror("Errore nell'apertura del file cuda_serial.csv");
         return EXIT_FAILURE;
     }
 
     // Scrive intestazione CSV
-    fprintf(csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
+    fprintf(cse_serial_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
 
-    for (int i = 0; i < num_matrices; i++) {
-        printf("\n--- Matrice: %s ---\n", matrix_names[i]);
+   // File per risultati HLL seriale
+   FILE *hll_csv = fopen("results/cuda_hll_serial.csv", "w");
+   if (!hll_csv) {
+       perror("Errore nell'apertura del file cuda_hll_serial.csv");
+       fclose(hll_csv);
+       return EXIT_FAILURE;
+   }
+   fprintf(hll_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
 
-        matrixData *matrix_data = static_cast<matrixData *>(malloc(sizeof(matrixData)));
-        if (!matrix_data) {
-            perror("Errore nell'allocazione di matrix_data");
-            return EXIT_FAILURE;
-        }
+   for (int i = 0; i < num_matrices; i++) {
+       printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
-        preprocess_matrix(matrix_data, i);
+       matrixData *matrix_data = static_cast<matrixData *>(malloc(sizeof(matrixData)));
+       if (!matrix_data) {
+           perror("Errore nell'allocazione di matrix_data");
+           return EXIT_FAILURE;
+       }
 
-        double *x = static_cast<double *>(malloc(matrix_data->N * sizeof(double)));
-        if (!x) {
-            perror("Errore allocazione vettore x");
-            return EXIT_FAILURE;
-        }
+       preprocess_matrix(matrix_data, i);
 
-        for (int j = 0; j < matrix_data->N; j++) {
-            x[j] = 1.0;
-        }
+       double *x = static_cast<double *>(malloc(matrix_data->N * sizeof(double)));
+       if (!x) {
+           perror("Errore allocazione vettore x");
+           return EXIT_FAILURE;
+       }
+       for (int j = 0; j < matrix_data->N; j++) {
+           x[j] = 1.0;
+       }
 
-        double total_seconds = 0.0;
-        double total_gflops = 0.0;
+       int nz = matrix_data->nz;
+       double density = (double)nz / (matrix_data->M * matrix_data->N);
+       printf("[DEBUG] Matrice: %s | M=%d, N=%d, NZ=%d → Densità=%.8f\n", matrix_names[i], matrix_data->M, matrix_data->N, nz, density);
 
-        for (int k = 0; k < ITERATION; k++) {
-            matrixPerformance perf = serial_csr_cuda(matrix_data, x);
-            total_seconds += perf.seconds;
-            total_gflops += perf.gigaFlops;
-        }
+       double flops = 2.0 * nz;
 
-        double avg_seconds = total_seconds / ITERATION;
-        double avg_gflops = total_gflops / ITERATION;
-        int nz = matrix_data->nz;
-        double density = (double)nz / (matrix_data->M * matrix_data->N);
+       // ==== CSR Serial CUDA ====
+       double total_seconds_csr = 0.0;
+       double total_gflops_csr = 0.0;
+       for (int k = 0; k < ITERATION; k++) {
+           matrixPerformance perf = serial_csr_cuda(matrix_data, x);
+           total_seconds_csr += perf.seconds;
+           total_gflops_csr += perf.gigaFlops;
+       }
+       fprintf(cse_serial_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
+        matrix_names[i],            // %s
+        matrix_data->M,             // %d
+        matrix_data->N,             // %d
+        nz,                         // %d
+        density,                    // <-- %.8f: ok!
+        total_seconds_csr / ITERATION,  // <-- %.6f
+        total_gflops_csr / ITERATION    // <-- %.6f
+    );
+       // ==== HLL Serial CUDA ====
+       double total_seconds_hll = 0.0;
+       double total_gflops_hll = 0.0;
+       for (int k = 0; k < ITERATION; k++) {
+           matrixPerformance perf = serial_hll_cuda(matrix_data, x);
+           total_seconds_hll += perf.seconds;
+           total_gflops_hll += perf.gigaFlops;
+       }
+       fprintf(hll_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
+               matrix_names[i],
+               matrix_data->M,
+               matrix_data->N,
+               nz,
+               density,
+               total_seconds_hll / ITERATION,
+               total_gflops_hll / ITERATION);
 
-        // Salva nel CSV
-        fprintf(csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-                matrix_names[i],
-                matrix_data->M,
-                matrix_data->N,
-                nz,
-                density,
-                avg_seconds,
-                avg_gflops);
+       // Cleanup
+       free(matrix_data->row_indices);
+       free(matrix_data->col_indices);
+       free(matrix_data->values);
+       free(matrix_data);
+       free(x);
+   }
 
-        // Cleanup
-        free(matrix_data->row_indices);
-        free(matrix_data->col_indices);
-        free(matrix_data->values);
-        free(matrix_data);
-        free(x);
-    }
+   fclose(cse_serial_csv);
+   fclose(hll_csv);
 
-    fclose(csv);
-    return 0;
+   return 0;
 }

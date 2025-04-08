@@ -2,7 +2,7 @@
 #define COSTANTS_H
 
 // Definizione di HackSize
-#define HackSize 32  // Dimensione del blocco
+#define HackSize 16  // Dimensione del blocco
 
 
 // TO DO aggiungere costante iterazioni per matrice

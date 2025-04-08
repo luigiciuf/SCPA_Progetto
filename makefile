@@ -24,3 +24,9 @@ clean:
 
 deepclean: clean
 	rm -f *.o *.out *.txt *.csv
+	rm -f $(TARGET) cuda_main
+
+# Compilazione CUDA seriale
+cuda:
+	nvcc -O2 -std=c++11 -Ilibs -ICUDA_libs -o cuda_main \
+	src/CUDA_src/main_cuda.cu src/CUDA_src/csr_Operations.cu src/CUDA_src/csr_utils.cu

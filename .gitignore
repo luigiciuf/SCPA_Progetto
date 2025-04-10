@@ -1,3 +1,4 @@
 matrix/
-results/
+results_local/
+results_server/
 report/

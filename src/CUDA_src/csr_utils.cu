@@ -28,6 +28,10 @@ void convert_to_csr(int M, int nz, const int *row_indices, const int *col_indice
     for (int i = 0; i < M; i++) {
         (*IRP)[i + 1] += (*IRP)[i];
     }
+    if (M <= 0) {
+        fprintf(stderr, "Errore: valore di M non valido (%d)\n", M);
+        exit(EXIT_FAILURE);
+    }
 
     int *row_position = static_cast<int *>(malloc(M * sizeof(int)));
     if (row_position == nullptr) {

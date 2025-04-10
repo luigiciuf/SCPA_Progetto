@@ -183,7 +183,7 @@ int main() {
         density,                    // <-- %.8f: ok!
         total_seconds_csr / ITERATION,  // <-- %.6f
         total_gflops_csr / ITERATION    // <-- %.6f
-    );
+    );  
        // ==== HLL Serial CUDA ====
        double total_seconds_hll = 0.0;
        double total_gflops_hll = 0.0;

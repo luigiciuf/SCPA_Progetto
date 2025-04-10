@@ -62,3 +62,18 @@ void matvec_csr(int M, const int *IRP, const int *JA, const double *AS, double *
         }
     }
 }
+
+
+/* Prodotto matrice-vettore parallelo su GPU - ciascun thread di un blocco prende in carico una riga */
+__global__ void gpuMatVec_csr(const int *d_IRP, const int *d_JA, const double *d_AS, const double *d_x, double *d_y, int M) {
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+
+    /* Controllo che la riga non ecceda il numero totale di righe */
+    if (row >= M) return;
+
+    double sum = 0.0;
+    /* Ciascun thread si fa carico di una riga */
+    for (int index = d_IRP[row]; index < d_IRP[row + 1]; index++)
+        sum += d_AS[index] * d_x[d_JA[index]];
+    d_y[row] = sum;
+}

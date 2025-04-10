@@ -123,23 +123,19 @@ int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
     const int ITERATION = 50;
 
-    FILE *cse_serial_csv = fopen("results/cuda_csr_serial.csv", "w");
-    if (!cse_serial_csv) {
-        perror("Errore nell'apertura del file cuda_serial.csv");
+    FILE *csr_serial_csv = fopen("results_local/cuda_csr_serial.csv", "w");
+    FILE *csr_parallel_csv = fopen("results_local/cuda_csr_parallel.csv", "w");
+    FILE *hll_csv = fopen("results_local/cuda_hll_serial.csv", "w");
+
+    if (!csr_serial_csv || !csr_parallel_csv || !hll_csv) {
+        perror("Errore nell'apertura dei file CSV");
         return EXIT_FAILURE;
     }
 
-    // Scrive intestazione CSV
-    fprintf(cse_serial_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
-
-   // File per risultati HLL seriale
-   FILE *hll_csv = fopen("results/cuda_hll_serial.csv", "w");
-   if (!hll_csv) {
-       perror("Errore nell'apertura del file cuda_hll_serial.csv");
-       fclose(hll_csv);
-       return EXIT_FAILURE;
-   }
-   fprintf(hll_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
+    // Scrivi intestazioni CSV
+    fprintf(csr_serial_csv,   "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
+    fprintf(csr_parallel_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
+    fprintf(hll_csv,          "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
 
    for (int i = 0; i < num_matrices; i++) {
        printf("\n--- Matrice: %s ---\n", matrix_names[i]);
@@ -163,54 +159,56 @@ int main() {
 
        int nz = matrix_data->nz;
        double density = (double)nz / (matrix_data->M * matrix_data->N);
-       printf("[DEBUG] Matrice: %s | M=%d, N=%d, NZ=%d → Densità=%.8f\n", matrix_names[i], matrix_data->M, matrix_data->N, nz, density);
 
        double flops = 2.0 * nz;
 
-       // ==== CSR Serial CUDA ====
-       double total_seconds_csr = 0.0;
-       double total_gflops_csr = 0.0;
-       for (int k = 0; k < ITERATION; k++) {
-           matrixPerformance perf = serial_csr_cuda(matrix_data, x);
-           total_seconds_csr += perf.seconds;
-           total_gflops_csr += perf.gigaFlops;
-       }
-       fprintf(cse_serial_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-        matrix_names[i],            // %s
-        matrix_data->M,             // %d
-        matrix_data->N,             // %d
-        nz,                         // %d
-        density,                    // <-- %.8f: ok!
-        total_seconds_csr / ITERATION,  // <-- %.6f
-        total_gflops_csr / ITERATION    // <-- %.6f
-    );  
-       // ==== HLL Serial CUDA ====
-       double total_seconds_hll = 0.0;
-       double total_gflops_hll = 0.0;
-       for (int k = 0; k < ITERATION; k++) {
-           matrixPerformance perf = serial_hll_cuda(matrix_data, x);
-           total_seconds_hll += perf.seconds;
-           total_gflops_hll += perf.gigaFlops;
-       }
-       fprintf(hll_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-               matrix_names[i],
-               matrix_data->M,
-               matrix_data->N,
-               nz,
-               density,
-               total_seconds_hll / ITERATION,
-               total_gflops_hll / ITERATION);
-
-       // Cleanup
-       free(matrix_data->row_indices);
-       free(matrix_data->col_indices);
-       free(matrix_data->values);
-       free(matrix_data);
-       free(x);
-   }
-
-   fclose(cse_serial_csv);
-   fclose(hll_csv);
-
-   return 0;
-}
+         // ==== CSR Serial CUDA ====
+         double total_seconds_csr = 0.0;
+         double total_gflops_csr = 0.0;
+         for (int k = 0; k < ITERATION; k++) {
+             matrixPerformance perf = serial_csr_cuda(matrix_data, x);
+             total_seconds_csr += perf.seconds;
+             total_gflops_csr += perf.gigaFlops;
+         }
+         fprintf(csr_serial_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
+                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
+                 density, total_seconds_csr / ITERATION, total_gflops_csr / ITERATION);
+ 
+         // ==== CSR Parallel CUDA ====
+         double total_seconds_parallel = 0.0;
+         double total_gflops_parallel = 0.0;
+         for (int k = 0; k < ITERATION; k++) {
+             matrixPerformance perf = parallel_csr_cuda(matrix_data, x);
+             total_seconds_parallel += perf.seconds;
+             total_gflops_parallel += perf.gigaFlops;
+         }
+         fprintf(csr_parallel_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
+                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
+                 density, total_seconds_parallel / ITERATION, total_gflops_parallel / ITERATION);
+ 
+         // ==== HLL Serial CUDA ====
+         double total_seconds_hll = 0.0;
+         double total_gflops_hll = 0.0;
+         for (int k = 0; k < ITERATION; k++) {
+             matrixPerformance perf = serial_hll_cuda(matrix_data, x);
+             total_seconds_hll += perf.seconds;
+             total_gflops_hll += perf.gigaFlops;
+         }
+         fprintf(hll_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
+                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
+                 density, total_seconds_hll / ITERATION, total_gflops_hll / ITERATION);
+ 
+         // Cleanup
+         free(matrix_data->row_indices);
+         free(matrix_data->col_indices);
+         free(matrix_data->values);
+         free(matrix_data);
+         free(x);
+     }
+ 
+     fclose(csr_serial_csv);
+     fclose(csr_parallel_csv);
+     fclose(hll_csv);
+ 
+     return 0;
+ }

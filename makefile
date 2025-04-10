@@ -3,8 +3,7 @@ CC = gcc
 NVCC = nvcc
 # Opzioni di compilazione
 CFLAGS = -O2 -fopenmp -Ilibs
-NVFLAGS = -O2 -std=c++11 -Ilibs -ICUDA_libs
-
+NVFLAGS = -O2 -std=c++11 -Ilibs -ICUDA_libs  -gencode arch=compute_75,code=sm_75
 # File sorgenti
 SRC_CPU = src/main.c src/csr_utils.c src/csr_Operations.c src/matrixIO.c \
           src/hll_Operations.c src/hll_ellpack_utils.c

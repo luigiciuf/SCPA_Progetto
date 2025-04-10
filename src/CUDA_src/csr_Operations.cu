@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <chrono> 
+#include <cuda_runtime.h>
 
 #include <cmath>
 #include "../CUDA_libs/csr_utils.h"
@@ -51,3 +52,83 @@ matrixPerformance serial_csr_cuda(matrixData *matrix_data_host, double *x_h) {
 
     return node;
 }
+matrixPerformance parallel_csr_cuda(matrixData *matrix_data_host, double *x_h) {
+    int M = matrix_data_host->M;
+    int NZ = matrix_data_host->nz;
+
+    // Allocazione host
+    int *IRP, *JA;
+    double *AS;
+    convert_to_csr(M, NZ, matrix_data_host->row_indices, matrix_data_host->col_indices, matrix_data_host->values, &IRP, &JA, &AS);
+
+    // Allocazione device
+    int *d_IRP, *d_JA;
+    double *d_AS, *d_x, *d_y;
+    cudaMalloc((void**)&d_IRP, (M + 1) * sizeof(int));
+    cudaMalloc((void**)&d_JA, NZ * sizeof(int));
+    cudaMalloc((void**)&d_AS, NZ * sizeof(double));
+    cudaMalloc((void**)&d_x, matrix_data_host->N * sizeof(double));
+    cudaMalloc((void**)&d_y, M * sizeof(double));
+
+    // Copia da host a device
+    cudaMemcpy(d_IRP, IRP, (M + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_JA, JA, NZ * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_AS, AS, NZ * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_x, x_h, matrix_data_host->N * sizeof(double), cudaMemcpyHostToDevice);
+
+    // Setup kernel
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (M + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Timing
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+
+    // Lancio kernel
+    gpuMatVec_csr<<<blocksPerGrid, threadsPerBlock>>>(d_IRP, d_JA, d_AS, d_x, d_y, M);
+    
+     // ===== Sincronizzazione e controllo errori =====
+     cudaEventRecord(stop);
+     cudaEventSynchronize(stop);
+ 
+     cudaError_t err = cudaGetLastError();
+     if (err != cudaSuccess) {
+         fprintf(stderr, "[CUDA ERROR] %s\n", cudaGetErrorString(err));
+     }
+ 
+     float milliseconds = 0;
+     cudaEventElapsedTime(&milliseconds, start, stop);
+ 
+     double seconds = milliseconds / 1000.0;
+     double flops = 2.0 * NZ;
+     double gflops = flops / seconds / 1e9;
+ 
+     // ===== Analisi e warning su risultati anomali =====
+     if (seconds < 1e-6 || gflops > 10000.0) {
+         printf("⚠️  [WARNING] Possibile anomalia: M=%d, NZ=%d, t=%.10f s, GFLOPS=%.2f\n", M, NZ, seconds, gflops);
+     }
+ 
+     // ===== Cleanup =====
+     cudaFree(d_IRP);
+     cudaFree(d_JA);
+     cudaFree(d_AS);
+     cudaFree(d_x);
+     cudaFree(d_y);
+ 
+     free(IRP);
+     free(JA);
+     free(AS);
+ 
+     cudaEventDestroy(start);
+     cudaEventDestroy(stop);
+ 
+     // ===== Return performance =====
+     matrixPerformance perf;
+     perf.seconds = seconds;
+     perf.flops = flops;
+     perf.gigaFlops = gflops;
+ 
+     return perf;
+ }

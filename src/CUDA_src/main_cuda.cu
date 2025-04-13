@@ -123,92 +123,76 @@ int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
     const int ITERATION = 50;
 
-    FILE *csr_serial_csv = fopen("results_local/cuda_csr_serial.csv", "w");
-    FILE *csr_parallel_csv = fopen("results_local/cuda_csr_parallel.csv", "w");
-    FILE *hll_csv = fopen("results_local/cuda_hll_serial.csv", "w");
-
-    if (!csr_serial_csv || !csr_parallel_csv || !hll_csv) {
-        perror("Errore nell'apertura dei file CSV");
+    FILE *cuda_perf_csv = fopen("results_local/cuda_performance.csv", "w");
+    if (!cuda_perf_csv) {
+        perror("Errore nell'apertura del file cuda_performance.csv");
         return EXIT_FAILURE;
     }
 
-    // Scrivi intestazioni CSV
-    fprintf(csr_serial_csv,   "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
-    fprintf(csr_parallel_csv, "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
-    fprintf(hll_csv,          "Matrice,M,N,NZ,Densità,Tempo medio (s),GFLOPS\n");
+    // Intestazione CSV unica
+    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Seriale,GFLOPS_CSR_Parallelo,GFLOPS_HLL_Seriale\n");
 
-   for (int i = 0; i < num_matrices; i++) {
-       printf("\n--- Matrice: %s ---\n", matrix_names[i]);
+    for (int i = 0; i < num_matrices; i++) {
+        printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
-       matrixData *matrix_data = static_cast<matrixData *>(malloc(sizeof(matrixData)));
-       if (!matrix_data) {
-           perror("Errore nell'allocazione di matrix_data");
-           return EXIT_FAILURE;
-       }
+        matrixData *matrix_data = static_cast<matrixData *>(malloc(sizeof(matrixData)));
+        if (!matrix_data) {
+            perror("Errore nell'allocazione di matrix_data");
+            return EXIT_FAILURE;
+        }
 
-       preprocess_matrix(matrix_data, i);
+        preprocess_matrix(matrix_data, i);
 
-       double *x = static_cast<double *>(malloc(matrix_data->N * sizeof(double)));
-       if (!x) {
-           perror("Errore allocazione vettore x");
-           return EXIT_FAILURE;
-       }
-       for (int j = 0; j < matrix_data->N; j++) {
-           x[j] = 1.0;
-       }
+        double *x = static_cast<double *>(malloc(matrix_data->N * sizeof(double)));
+        if (!x) {
+            perror("Errore allocazione vettore x");
+            return EXIT_FAILURE;
+        }
+        for (int j = 0; j < matrix_data->N; j++) {
+            x[j] = 1.0;
+        }
 
-       int nz = matrix_data->nz;
-       double density = (double)nz / (matrix_data->M * matrix_data->N);
+        int nz = matrix_data->nz;
+        double density = (double)nz / (matrix_data->M * matrix_data->N);
 
-       double flops = 2.0 * nz;
+        // ==== CSR Serial CUDA ====
+        double total_gflops_csr = 0.0;
+        for (int k = 0; k < ITERATION; k++) {
+            matrixPerformance perf = serial_csr_cuda(matrix_data, x);
+            total_gflops_csr += perf.gigaFlops;
+        }
+        double avg_gflops_csr = total_gflops_csr / ITERATION;
 
-         // ==== CSR Serial CUDA ====
-         double total_seconds_csr = 0.0;
-         double total_gflops_csr = 0.0;
-         for (int k = 0; k < ITERATION; k++) {
-             matrixPerformance perf = serial_csr_cuda(matrix_data, x);
-             total_seconds_csr += perf.seconds;
-             total_gflops_csr += perf.gigaFlops;
-         }
-         fprintf(csr_serial_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
-                 density, total_seconds_csr / ITERATION, total_gflops_csr / ITERATION);
- 
-         // ==== CSR Parallel CUDA ====
-         double total_seconds_parallel = 0.0;
-         double total_gflops_parallel = 0.0;
-         for (int k = 0; k < ITERATION; k++) {
-             matrixPerformance perf = parallel_csr_cuda(matrix_data, x);
-             total_seconds_parallel += perf.seconds;
-             total_gflops_parallel += perf.gigaFlops;
-         }
-         fprintf(csr_parallel_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
-                 density, total_seconds_parallel / ITERATION, total_gflops_parallel / ITERATION);
- 
-         // ==== HLL Serial CUDA ====
-         double total_seconds_hll = 0.0;
-         double total_gflops_hll = 0.0;
-         for (int k = 0; k < ITERATION; k++) {
-             matrixPerformance perf = serial_hll_cuda(matrix_data, x);
-             total_seconds_hll += perf.seconds;
-             total_gflops_hll += perf.gigaFlops;
-         }
-         fprintf(hll_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f\n",
-                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
-                 density, total_seconds_hll / ITERATION, total_gflops_hll / ITERATION);
- 
-         // Cleanup
-         free(matrix_data->row_indices);
-         free(matrix_data->col_indices);
-         free(matrix_data->values);
-         free(matrix_data);
-         free(x);
-     }
- 
-     fclose(csr_serial_csv);
-     fclose(csr_parallel_csv);
-     fclose(hll_csv);
- 
-     return 0;
- }
+        // ==== CSR Parallel CUDA ====
+        double total_gflops_parallel = 0.0;
+        for (int k = 0; k < ITERATION; k++) {
+            matrixPerformance perf = parallel_csr_cuda(matrix_data, x);
+            total_gflops_parallel += perf.gigaFlops;
+        }
+        double avg_gflops_parallel = total_gflops_parallel / ITERATION;
+
+        // ==== HLL Serial CUDA ====
+        double total_gflops_hll = 0.0;
+        for (int k = 0; k < ITERATION; k++) {
+            matrixPerformance perf = serial_hll_cuda(matrix_data, x);
+            total_gflops_hll += perf.gigaFlops;
+        }
+        double avg_gflops_hll = total_gflops_hll / ITERATION;
+
+        // Scrivi una riga nel file unificato
+        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f\n",
+                matrix_names[i], matrix_data->M, matrix_data->N, nz,
+                density, avg_gflops_csr, avg_gflops_parallel, avg_gflops_hll);
+
+        // Cleanup
+        free(matrix_data->row_indices);
+        free(matrix_data->col_indices);
+        free(matrix_data->values);
+        free(matrix_data);
+        free(x);
+    }
+
+    fclose(cuda_perf_csv);
+
+    return 0;
+}

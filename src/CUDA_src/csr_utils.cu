@@ -64,7 +64,7 @@ void matvec_csr(int M, const int *IRP, const int *JA, const double *AS, double *
 }
 
 
-/* Prodotto matrice-vettore parallelo su GPU - ciascun thread di un blocco prende in carico una riga */
+/* kernel row based*/
 __global__ void gpuMatVec_csr(const int *d_IRP, const int *d_JA, const double *d_AS, const double *d_x, double *d_y, int M) {
     const int row = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -76,4 +76,37 @@ __global__ void gpuMatVec_csr(const int *d_IRP, const int *d_JA, const double *d
     for (int index = d_IRP[row]; index < d_IRP[row + 1]; index++)
         sum += d_AS[index] * d_x[d_JA[index]];
     d_y[row] = sum;
+}
+
+/* kernel warp based */
+
+__global__ void gpuMatVec_csr_warp(const int *d_IRP, const int *d_JA,
+    const double *d_AS, const double *d_x,
+    double *d_y, int M) {
+int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+int warp_id = thread_id / 32;
+int lane_id = threadIdx.x & 31;
+
+if (warp_id >= M) return;
+
+// I primi due thread del warp leggono gli offset della riga
+int row_start = 0, row_end = 0;
+if (lane_id == 0) row_start = d_IRP[warp_id];
+if (lane_id == 1) row_end = d_IRP[warp_id + 1];
+
+row_start = __shfl_sync(0xFFFFFFFF, row_start, 0);
+row_end   = __shfl_sync(0xFFFFFFFF, row_end, 1);
+
+double sum = 0.0;
+
+for (int i = row_start + lane_id; i < row_end; i += 32) {
+sum += d_AS[i] * d_x[d_JA[i]];
+}
+
+// Somma dei risultati all'interno del warp
+for (int offset = 16; offset > 0; offset /= 2)
+sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+
+if (lane_id == 0)
+d_y[warp_id] = sum;
 }

@@ -132,3 +132,61 @@ matrixPerformance parallel_csr_cuda(matrixData *matrix_data_host, double *x_h) {
  
      return perf;
  }
+
+ matrixPerformance parallel_csr_cuda_warp(matrixData *matrix_data_host, double *x_h) {
+    int M = matrix_data_host->M;
+    int NZ = matrix_data_host->nz;
+
+    int *IRP, *JA;
+    double *AS;
+    convert_to_csr(M, NZ, matrix_data_host->row_indices, matrix_data_host->col_indices,
+                   matrix_data_host->values, &IRP, &JA, &AS);
+
+    int *d_IRP, *d_JA;
+    double *d_AS, *d_x, *d_y;
+    cudaMalloc(&d_IRP, (M + 1) * sizeof(int));
+    cudaMalloc(&d_JA, NZ * sizeof(int));
+    cudaMalloc(&d_AS, NZ * sizeof(double));
+    cudaMalloc(&d_x, matrix_data_host->N * sizeof(double));
+    cudaMalloc(&d_y, M * sizeof(double));
+
+    cudaMemcpy(d_IRP, IRP, (M + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_JA, JA, NZ * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_AS, AS, NZ * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_x, x_h, matrix_data_host->N * sizeof(double), cudaMemcpyHostToDevice);
+
+    // Impostazioni kernel warp-based
+    int threadsPerBlock = 256;
+    int warpsPerBlock = threadsPerBlock / 32;
+    int numWarps = (M + 1 + warpsPerBlock - 1) / warpsPerBlock;
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+
+    gpuMatVec_csr_warp<<<numWarps, threadsPerBlock>>>(d_IRP, d_JA, d_AS, d_x, d_y, M);
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+        fprintf(stderr, "[CUDA ERROR - Warp] %s\n", cudaGetErrorString(err));
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    matrixPerformance perf;
+    perf.seconds = milliseconds / 1000.0;
+    perf.flops = 2.0 * NZ;
+    perf.gigaFlops = perf.flops / perf.seconds / 1e9;
+
+    // Cleanup
+    cudaFree(d_IRP); cudaFree(d_JA); cudaFree(d_AS);
+    cudaFree(d_x);   cudaFree(d_y);
+    free(IRP);       free(JA);       free(AS);
+    cudaEventDestroy(start); cudaEventDestroy(stop);
+
+    return perf;
+}

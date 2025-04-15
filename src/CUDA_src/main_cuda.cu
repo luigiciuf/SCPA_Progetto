@@ -129,13 +129,13 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    // Intestazione CSV unica
-    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Seriale,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,GFLOPS_HLL_Seriale\n");
+    // Intestazione CSV unica (aggiunta colonna HLL parallelo)
+    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Seriale,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,GFLOPS_HLL_Seriale,GFLOPS_HLL_Parallelo\n");
 
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
-        matrixData *matrix_data = static_cast<matrixData *>(malloc(sizeof(matrixData)));
+        matrixData *matrix_data = (matrixData *)malloc(sizeof(matrixData));
         if (!matrix_data) {
             perror("Errore nell'allocazione di matrix_data");
             return EXIT_FAILURE;
@@ -143,7 +143,7 @@ int main() {
 
         preprocess_matrix(matrix_data, i);
 
-        double *x = static_cast<double *>(malloc(matrix_data->N * sizeof(double)));
+        double *x = (double *)malloc(matrix_data->N * sizeof(double));
         if (!x) {
             perror("Errore allocazione vettore x");
             return EXIT_FAILURE;
@@ -187,10 +187,23 @@ int main() {
         }
         double avg_gflops_hll = total_gflops_hll / ITERATION;
 
+        // ==== HLL Parallel CUDA ====
+        double total_gflops_hll_par = 0.0;
+        for (int k = 0; k < ITERATION; k++) {
+            matrixPerformance perf = parallel_hll_cuda(matrix_data, x);
+            total_gflops_hll_par += perf.gigaFlops;
+        }
+        double avg_gflops_hll_par = total_gflops_hll_par / ITERATION;
+
         // Scrivi una riga nel file unificato
-        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f,%.6f\n",
+        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
-                density, avg_gflops_csr, avg_gflops_parallel, avg_gflops_warp, avg_gflops_hll);
+                density,
+                avg_gflops_csr,
+                avg_gflops_parallel,
+                avg_gflops_warp,
+                avg_gflops_hll,
+                avg_gflops_hll_par);
 
         // Cleanup
         free(matrix_data->row_indices);

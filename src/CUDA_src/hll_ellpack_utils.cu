@@ -179,3 +179,41 @@ void matvec_Hll_serial_CUDA(const HLL_Matrix *hll_matrix, const double *x, doubl
     }
 
 }
+
+__global__ void matvec_Hll_cuda_SH(const HLL_Matrix *d_hll_matrix, const double *d_x, double *d_y, int M) {
+    int global_row = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    int thread_col = threadIdx.y;
+
+    if (global_row >= M) return;
+
+    int block_id = global_row / HackSize;
+    if (block_id >= d_hll_matrix->num_blocks) return; // Evitare accesso fuori limite
+
+    int local_row = global_row % HackSize;
+    const ELLPACK_Block *block = &d_hll_matrix->blocks[block_id];
+
+    int row_offset = local_row * block->max_nz_per_row;
+
+    __shared__ double shared_sum[32][32]; // Supponendo HackSize = 32, adattare in base ai limiti reali
+
+    // Inizializzazione della memoria condivisa
+    shared_sum[threadIdx.x][threadIdx.y] = 0.0;
+    __syncthreads();
+
+    if (thread_col < block->max_nz_per_row) {
+        shared_sum[threadIdx.x][thread_col] = block->AS[row_offset + thread_col] * d_x[block->JA[row_offset + thread_col]];
+    }
+    __syncthreads();
+
+    // Riduzione manuale in memoria condivisa
+    for (int stride = blockDim.y / 2; stride > 0; stride /= 2) {
+        if (thread_col < stride) {
+            shared_sum[threadIdx.x][thread_col] += shared_sum[threadIdx.x][thread_col + stride];
+        }
+        __syncthreads();
+    }
+
+    if (thread_col == 0) {
+        d_y[global_row] = shared_sum[threadIdx.x][0];
+    }
+}

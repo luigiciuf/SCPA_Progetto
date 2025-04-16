@@ -5,7 +5,7 @@ static const char *matrix_names[] = {
     "cage4.mtx",
     ///"ML_Laplace.mtx",
      "amazon0302.mtx",
-    "mhda416.mtx",
+   /* "mhda416.mtx",
     "mcfe.mtx",
     "olm1000.mtx",
     "adder_dcop_32.mtx",
@@ -13,10 +13,10 @@ static const char *matrix_names[] = {
     "cavity10.mtx",
     "rdist2.mtx",
     "cant.mtx",
-    "olafu.mtx",
-    //"Cube_Coup_dt0.mtx",
-   // "ML_Laplace.mtx",
-    "bcsstk17.mtx",
+    "olafu.mtx",*/
+    "Cube_Coup_dt0.mtx",
+   "ML_Laplace.mtx",
+    /**"bcsstk17.mtx",
     "mac_econ_fwd500.mtx",
     "mhd4800a.mtx",
     "cop20k_A.mtx",
@@ -31,7 +31,7 @@ static const char *matrix_names[] = {
     "nlpkkt80.mtx",  
     "webbase-1M.mtx",
     "dc1.mtx",
-    "amazon0302.mtx",
+    "amazon0302.mtx",*/
     "af_1_k101.mtx",   
     "roadNet-PA.mtx" 
     

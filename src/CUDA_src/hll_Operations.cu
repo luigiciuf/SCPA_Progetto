@@ -83,7 +83,7 @@ matrixPerformance parallel_hll_cuda(matrixData *matrix_data_host, double *x_h) {
     int max_nz_per_row_global = 0;
 
     // Resetta e opzionalmente controlla quanta memoria è disponibile
-    //cudaDeviceReset();
+    cudaDeviceReset();
     //cudaMemGetInfo(nullptr, nullptr); // opzionale
 
     // Alloca la struttura HLL su host

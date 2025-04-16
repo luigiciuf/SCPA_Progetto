@@ -187,33 +187,39 @@ __global__ void matvec_Hll_cuda_SH(const HLL_Matrix *d_hll_matrix, const double 
     if (global_row >= M) return;
 
     int block_id = global_row / HackSize;
-    if (block_id >= d_hll_matrix->num_blocks) return; // Evitare accesso fuori limite
-
     int local_row = global_row % HackSize;
-    const ELLPACK_Block *block = &d_hll_matrix->blocks[block_id];
 
-    int row_offset = local_row * block->max_nz_per_row;
+    if (block_id >= d_hll_matrix->num_blocks) return;
 
-    __shared__ double shared_sum[32][32]; // Supponendo HackSize = 32, adattare in base ai limiti reali
+    // Per migliorare la performance, carichiamo il blocco in variabili locali (meno accessi a memoria globale)
+    ELLPACK_Block blk = d_hll_matrix->blocks[block_id];
+    int row_offset = local_row * blk.max_nz_per_row;
 
-    // Inizializzazione della memoria condivisa
-    shared_sum[threadIdx.x][threadIdx.y] = 0.0;
+    // Shared memory ottimizzata: flat 1D array per coalesced access
+    __shared__ double shared_sum[1024];  // 32*32 se HackSize=32
+
+    int thread_id = threadIdx.x * blockDim.y + threadIdx.y;
+    int shared_index = thread_id;
+
+    shared_sum[shared_index] = 0.0;
     __syncthreads();
 
-    if (thread_col < block->max_nz_per_row) {
-        shared_sum[threadIdx.x][thread_col] = block->AS[row_offset + thread_col] * d_x[block->JA[row_offset + thread_col]];
+    if (thread_col < blk.max_nz_per_row) {
+        int idx = row_offset + thread_col;
+        shared_sum[shared_index] = blk.AS[idx] * d_x[blk.JA[idx]];
     }
+
     __syncthreads();
 
-    // Riduzione manuale in memoria condivisa
+    // Riduzione lungo threadIdx.y
     for (int stride = blockDim.y / 2; stride > 0; stride /= 2) {
         if (thread_col < stride) {
-            shared_sum[threadIdx.x][thread_col] += shared_sum[threadIdx.x][thread_col + stride];
+            shared_sum[shared_index] += shared_sum[shared_index + stride];
         }
         __syncthreads();
     }
 
     if (thread_col == 0) {
-        d_y[global_row] = shared_sum[threadIdx.x][0];
+        d_y[global_row] = shared_sum[shared_index];
     }
 }

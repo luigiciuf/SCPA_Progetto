@@ -129,9 +129,8 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    // Intestazione CSV unica (aggiunta colonna HLL parallelo)
-    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Seriale,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,GFLOPS_HLL_Seriale,GFLOPS_HLL_Parallelo\n");
-
+    // Intestazione CSV aggiornata 
+    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,GFLOPS_HLL_Parallelo\n");
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
@@ -154,14 +153,14 @@ int main() {
 
         int nz = matrix_data->nz;
         double density = (double)nz / (matrix_data->M * matrix_data->N);
-
+        /**
         // ==== CSR Serial CUDA ====
         double total_gflops_csr = 0.0;
         for (int k = 0; k < ITERATION; k++) {
             matrixPerformance perf = serial_csr_cuda(matrix_data, x);
             total_gflops_csr += perf.gigaFlops;
         }
-        double avg_gflops_csr = total_gflops_csr / ITERATION;
+        double avg_gflops_csr = total_gflops_csr / ITERATION;*/
 
         // ==== CSR Parallel CUDA ====
         double total_gflops_parallel = 0.0;
@@ -179,13 +178,13 @@ int main() {
         }
         double avg_gflops_warp = total_gflops_warp / ITERATION;
 
-        // ==== HLL Serial CUDA ====
+       /* // ==== HLL Serial CUDA ====
         double total_gflops_hll = 0.0;
         for (int k = 0; k < ITERATION; k++) {
             matrixPerformance perf = serial_hll_cuda(matrix_data, x);
             total_gflops_hll += perf.gigaFlops;
         }
-        double avg_gflops_hll = total_gflops_hll / ITERATION;
+        double avg_gflops_hll = total_gflops_hll / ITERATION;*/
 
         // ==== HLL Parallel CUDA ====
         double total_gflops_hll_par = 0.0;
@@ -196,13 +195,11 @@ int main() {
         double avg_gflops_hll_par = total_gflops_hll_par / ITERATION;
 
         // Scrivi una riga nel file unificato
-        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f\n",
                 matrix_names[i], matrix_data->M, matrix_data->N, nz,
                 density,
-                avg_gflops_csr,
                 avg_gflops_parallel,
                 avg_gflops_warp,
-                avg_gflops_hll,
                 avg_gflops_hll_par);
 
         // Cleanup

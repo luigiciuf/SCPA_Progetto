@@ -149,10 +149,10 @@ int main() {
     int num_configs = max_threads; // da 1 a max_threads
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
      // Apri due file separati
-     FILE *csr_serial = fopen("results/csr_serial.csv", "w");
-     FILE *csr_parallel = fopen("results/csr_parallel.csv", "w");
-     FILE *hll_serial = fopen("results/hll_serial.csv", "w");  
-     FILE *hll_parallel = fopen("results/hll_parallel.csv", "w");
+     FILE *csr_serial = fopen("results_local/csr_serial.csv", "w");
+     FILE *csr_parallel = fopen("results_local/csr_parallel.csv", "w");
+     FILE *hll_serial = fopen("results_local/hll_serial.csv", "w");  
+     FILE *hll_parallel = fopen("results_local/hll_parallel.csv", "w");
      if (!csr_serial || !csr_parallel|| !hll_serial|| !hll_parallel) {
          perror("Errore apertura file CSV");
          return EXIT_FAILURE;
@@ -196,8 +196,8 @@ int main() {
         double density = (double)nz / (matrix_data->M * matrix_data->N);
         double flops = 2.0 * nz;
 
-        // Esegui prodotto  50 volte
-        int ITERATION = 50;
+        // Esegui prodotto  50 volte cambiato in 3 
+        int ITERATION = 1;
         struct matrixPerformance perf_serial_csr = benchmark(matrix_data, x, ITERATION, 1, serial_csr);
         fprintf(csr_serial, "%s,%d,%d,%d,%.8f,%d,%.6f,%.0f,%.6f\n",
             matrix_names[i],

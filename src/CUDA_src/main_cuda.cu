@@ -121,7 +121,7 @@ void preprocess_matrix(matrixData *matrix_data, int i) {
 
 int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
-    const int ITERATION = 50;
+    const int ITERATION = 1;
 
     FILE *cuda_perf_csv = fopen("results_local/cuda_performance.csv", "w");
     if (!cuda_perf_csv) {
@@ -130,7 +130,7 @@ int main() {
     }
 
     // Intestazione CSV aggiornata 
-    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,GFLOPS_HLL_Parallelo\n");
+    fprintf(cuda_perf_csv, "Matrice,M,N,NZ,Densità,GFLOPS_CSR_Parallelo,GFLOPS_CSR_WARP,Kernel_CSR_Selezionato,GFLOPS_HLL_Parallelo\n");
     for (int i = 0; i < num_matrices; i++) {
         printf("\n--- Matrice: %s ---\n", matrix_names[i]);
 
@@ -150,7 +150,11 @@ int main() {
         for (int j = 0; j < matrix_data->N; j++) {
             x[j] = 1.0;
         }
-
+        if (matrix_data->M <= 0 || matrix_data->N <= 0) {
+            fprintf(stderr, "Errore: dimensioni non valide per la matrice %s → M=%d, N=%d\n",
+                    matrix_names[i], matrix_data->M, matrix_data->N);
+            continue;  // oppure exit(EXIT_FAILURE);
+        }
         int nz = matrix_data->nz;
         double density = (double)nz / (matrix_data->M * matrix_data->N);
         /**
@@ -178,7 +182,13 @@ int main() {
         }
         double avg_gflops_warp = total_gflops_warp / ITERATION;
 
-       /* // ==== HLL Serial CUDA ====
+        // === Scelta automatica del kernel migliore per analisi/uso ===
+        int avg_nnz_per_row = nz / matrix_data->M;
+        const char *selected_kernel = (avg_nnz_per_row < 25 || density > 0.001) ? "ROW" : "WARP";
+        
+        printf("→ Kernel selezionato per %s: %s\n", matrix_names[i], selected_kernel);
+        
+        /* // ==== HLL Serial CUDA ====
         double total_gflops_hll = 0.0;
         for (int k = 0; k < ITERATION; k++) {
             matrixPerformance perf = serial_hll_cuda(matrix_data, x);
@@ -194,13 +204,14 @@ int main() {
         }
         double avg_gflops_hll_par = total_gflops_hll_par / ITERATION;
 
-        // Scrivi una riga nel file unificato
-        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%.6f\n",
-                matrix_names[i], matrix_data->M, matrix_data->N, nz,
-                density,
-                avg_gflops_parallel,
-                avg_gflops_warp,
-                avg_gflops_hll_par);
+        fprintf(cuda_perf_csv, "%s,%d,%d,%d,%.8f,%.6f,%.6f,%s,%.6f\n",
+            matrix_names[i], matrix_data->M, matrix_data->N, nz,
+            density,
+            avg_gflops_parallel,
+            avg_gflops_warp,
+            selected_kernel,
+            avg_gflops_hll_par
+        );
 
         // Cleanup
         free(matrix_data->row_indices);

@@ -30,6 +30,17 @@ typedef struct {
     int num_blocks;         // Numero di blocchi
 } HLL_Matrix;
 
+typedef struct {
+    int* d_JA;
+    double* d_AS;
+    int* d_block_offsets;
+    int* d_block_max_nz;
+    int* d_block_rows;
+
+    int num_blocks;
+    int total_nnz; // somma di tutti i size_of_arrays
+} FlattenedHLLMatrix;
+
 // Struttura per le performance
 struct matrixPerformance {
     char nameMatrix[50];

@@ -121,7 +121,7 @@ void preprocess_matrix(matrixData *matrix_data, int i) {
 
 int main() {
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
-    const int ITERATION = 1;
+    const int ITERATION = 5;
 
     FILE *cuda_perf_csv = fopen("results_local/cuda_performance.csv", "w");
     if (!cuda_perf_csv) {

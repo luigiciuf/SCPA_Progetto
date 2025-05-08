@@ -113,7 +113,7 @@ matrixPerformance parallel_hll_cuda(matrixData *matrix_data_host, double *x_h) {
     cudaMemset(d_y, 0, M * sizeof(double));
 
     // === Configurazione griglia CUDA ===
-    int block_size = 256;
+    int block_size = 128;
     int grid_size = (M + block_size - 1) / block_size;
 
     dim3 BLOCK_DIM(block_size);

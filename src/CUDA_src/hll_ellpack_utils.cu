@@ -237,12 +237,7 @@ FlattenedHLLMatrix build_flattened_hll_matrix(const HLL_Matrix *hll_matrix) {
 }
 
 
-__global__ void matvec_hll_flat_cuda(
-    const FlattenedHLLMatrix hll,
-    const double* __restrict__ x,
-    double* __restrict__ y,
-    int M)
-{
+__global__ void matvec_hll_flat_cuda(const FlattenedHLLMatrix hll,const double* __restrict__ x,double* __restrict__ y,int M){
     int global_row = blockIdx.x * blockDim.x + threadIdx.x;
     if (global_row >= M) return;
 

@@ -77,7 +77,7 @@ matrixPerformance parallel_csr_cuda(matrixData *matrix_data_host, double *x_h) {
     cudaMemcpy(d_x, x_h, matrix_data_host->N * sizeof(double), cudaMemcpyHostToDevice);
 
     // Setup kernel
-    int threadsPerBlock = 256;
+    int threadsPerBlock = 128;
     int blocksPerGrid = (M + threadsPerBlock - 1) / threadsPerBlock;
 
     // Timing
@@ -156,7 +156,7 @@ matrixPerformance parallel_csr_cuda(matrixData *matrix_data_host, double *x_h) {
     cudaMemcpy(d_x, x_h, matrix_data_host->N * sizeof(double), cudaMemcpyHostToDevice);
 
     // Impostazioni kernel warp-based
-    int threadsPerBlock = 256;
+    int threadsPerBlock = 128; // 32 * 32
     int warpsPerBlock = threadsPerBlock / 32;
     int numWarps = (M + 1 + warpsPerBlock - 1) / warpsPerBlock;
 

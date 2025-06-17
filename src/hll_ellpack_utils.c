@@ -166,7 +166,8 @@ void matvec_Hll_serial(const HLL_Matrix *hll_matrix, const double *x, double *y,
     }
 }
 
-void matvec_Hll(const HLL_Matrix *hll_matrix, const double *x, double *y, int num_threads, const int *start_block, const int *end_block, int max_row_in_matrix) {
+void matvec_Hll(const HLL_Matrix *hll_matrix, const double *x, double *y, int num_threads, const int *start_block,
+     const int *end_block, int max_row_in_matrix) {
     #pragma omp parallel num_threads(num_threads)
     {
         int tid = omp_get_thread_num();

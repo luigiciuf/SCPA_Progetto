@@ -149,10 +149,10 @@ int main() {
     int num_configs = max_threads; // da 1 a max_threads
     const int num_matrices = sizeof(matrix_names) / sizeof(matrix_names[0]);
      // Apri due file separati
-     FILE *csr_serial = fopen("results_local/csr_serial.csv", "w");
-     FILE *csr_parallel = fopen("results_local/csr_openmp_parallel.csv", "w");
-     FILE *hll_serial = fopen("results_local/hll_serial.csv", "w");  
-     FILE *hll_parallel = fopen("results_local/hll_openmp_parallel.csv", "w");
+     FILE *csr_serial = fopen("results/csr_serial.csv", "w");
+     FILE *csr_parallel = fopen("results/csr_openmp_parallel.csv", "w");
+     FILE *hll_serial = fopen("results/hll_serial.csv", "w");  
+     FILE *hll_parallel = fopen("results/hll_openmp_parallel.csv", "w");
      if (!csr_serial || !csr_parallel|| !hll_serial|| !hll_parallel) {
          perror("Errore apertura file CSV");
          return EXIT_FAILURE;
